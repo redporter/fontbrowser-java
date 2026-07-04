@@ -23,7 +23,13 @@ public class FontBrowser extends JFrame{
 		b.setVisible(true);
 	}
 
-	private JList<String> familyC;
+	private DefaultListModel<String> systemModel;
+	private DefaultListModel<String> loadedModel;
+	private java.util.List<String> loadedFonts = new java.util.ArrayList<>();
+	private JList<String> systemList;
+	private JList<String> loadedList;
+	private JTabbedPane leftTabbedPane;
+
 	private JComboBox<Integer> sizeC;
 	private JTextArea text;
 	private JTabbedPane center;
@@ -49,7 +55,9 @@ public class FontBrowser extends JFrame{
 		
 		GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
 		InputStream stream = FontBrowser.class.getResourceAsStream("Nosifer-Regular.ttf");
-		ge.registerFont(Font.createFont(Font.TRUETYPE_FONT, stream));		
+		Font nosiferFont = Font.createFont(Font.TRUETYPE_FONT, stream);
+		ge.registerFont(nosiferFont);
+		loadedFonts.add(nosiferFont.getFamily());		
 		
 		mainF = new Font("Nosifer", Font.PLAIN, 14);
 		mainC = new Color(200, 20, 20, 255);
@@ -68,25 +76,53 @@ public class FontBrowser extends JFrame{
 		}
 		family = fonts[0];
 		
-		familyC = new JList<>(fonts);
-		leftO.add(new JScrollPane(familyC), BorderLayout.CENTER);
-		familyC.addListSelectionListener(new ListSelectionListener(){
+		systemModel = new DefaultListModel<>();
+		for (String f : fonts) {
+			systemModel.addElement(f);
+		}
+		systemList = new JList<>(systemModel);
+		systemList.setCellRenderer(new ListRenderer());
+		systemList.setToolTipText("Double click to enable/disable preview in list.");
+
+		loadedModel = new DefaultListModel<>();
+		for (String f : loadedFonts) {
+			loadedModel.addElement(f);
+		}
+		loadedList = new JList<>(loadedModel);
+		loadedList.setCellRenderer(new ListRenderer());
+		loadedList.setToolTipText("Double click to enable/disable preview in list.");
+
+		systemList.addListSelectionListener(new ListSelectionListener(){
 			@Override
 			public void valueChanged(ListSelectionEvent e) {
 				if(e.getValueIsAdjusting()){
 					return;
 				}
-				
-				int index = familyC.getSelectedIndex();
-				if(index < 0){
-					return;
+				if (leftTabbedPane == null || leftTabbedPane.getSelectedIndex() == 0) {
+					int index = systemList.getSelectedIndex();
+					if(index >= 0){
+						updateFont(systemList.getModel().getElementAt(index), -1);
+					}
 				}
-				
-				updateFont(familyC.getModel().getElementAt(index), -1); 
 			}
 		});
-		familyC.setCellRenderer(new ListRenderer());
-		familyC.addMouseListener(new MouseAdapter(){
+
+		loadedList.addListSelectionListener(new ListSelectionListener(){
+			@Override
+			public void valueChanged(ListSelectionEvent e) {
+				if(e.getValueIsAdjusting()){
+					return;
+				}
+				if (leftTabbedPane != null && leftTabbedPane.getSelectedIndex() == 1) {
+					int index = loadedList.getSelectedIndex();
+					if(index >= 0){
+						updateFont(loadedList.getModel().getElementAt(index), -1);
+					}
+				}
+			}
+		});
+
+		MouseAdapter doubleClickListener = new MouseAdapter(){
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				if(e.getClickCount() == 2){
@@ -94,11 +130,80 @@ public class FontBrowser extends JFrame{
 					if (previewBtn != null) {
 						previewBtn.setSelected(preview);
 					}
-					familyC.repaint();
+					systemList.repaint();
+					loadedList.repaint();
 				}
 			}
+		};
+		systemList.addMouseListener(doubleClickListener);
+		loadedList.addMouseListener(doubleClickListener);
+
+		leftTabbedPane = new JTabbedPane();
+		restyle(leftTabbedPane);
+		leftTabbedPane.addTab("System Fonts", new JScrollPane(systemList));
+
+		JPanel loadedTabPanel = new JPanel(new BorderLayout());
+		loadedTabPanel.setOpaque(false);
+
+		JPanel loadedControlPanel = new JPanel(new GridLayout(1, 3, 5, 5));
+		loadedControlPanel.setOpaque(false);
+
+		JButton fileBtn = new JButton("File");
+		JButton dirBtn = new JButton("Directory");
+		JButton clearBtn = new JButton("Clear");
+		restyle(fileBtn);
+		restyle(dirBtn);
+		restyle(clearBtn);
+
+		loadedControlPanel.add(fileBtn);
+		loadedControlPanel.add(dirBtn);
+		loadedControlPanel.add(clearBtn);
+
+		loadedTabPanel.add(loadedControlPanel, BorderLayout.NORTH);
+		loadedTabPanel.add(new JScrollPane(loadedList), BorderLayout.CENTER);
+
+		leftTabbedPane.addTab("Loaded", loadedTabPanel);
+		leftO.add(leftTabbedPane, BorderLayout.CENTER);
+
+		fileBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				loadFontFromFile();
+			}
 		});
-		familyC.setToolTipText("Double click to enbable/disable preview in list."); 
+
+		dirBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				loadFontsFromDirectory();
+			}
+		});
+
+		clearBtn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				loadedFonts.clear();
+				filterFonts();
+			}
+		});
+
+		leftTabbedPane.addChangeListener(new ChangeListener() {
+			@Override
+			public void stateChanged(ChangeEvent e) {
+				int selectedIndex = leftTabbedPane.getSelectedIndex();
+				if (selectedIndex == 0) {
+					String selected = systemList.getSelectedValue();
+					if (selected != null) {
+						updateFont(selected, -1);
+					}
+				} else if (selectedIndex == 1) {
+					String selected = loadedList.getSelectedValue();
+					if (selected != null) {
+						updateFont(selected, -1);
+					}
+				}
+			}
+		}); 
 		
 		Integer[] sizes = new Integer[]{8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 
 			20, 22, 24, 26, 30, 36, 42, 48, 54, 60};
@@ -126,6 +231,7 @@ public class FontBrowser extends JFrame{
 		left.add(sizePanel);
 		
 		center = new JTabbedPane();
+		restyle(center);
 		add(center, BorderLayout.CENTER);
 		
 		text = new JTextArea();
@@ -172,7 +278,8 @@ public class FontBrowser extends JFrame{
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				preview = previewBtn.isSelected();
-				familyC.repaint();
+				systemList.repaint();
+				loadedList.repaint();
 			}
 		});
 		restyle(previewBtn);
@@ -239,7 +346,9 @@ public class FontBrowser extends JFrame{
 	}
 
 	private void updateComponentFonts(Component comp, Font font) {
-		comp.setFont(font);
+		if (!(comp instanceof JTabbedPane)) {
+			comp.setFont(font);
+		}
 		if (comp instanceof JTable) {
 			JTable table = (JTable) comp;
 			if (table.getTableHeader() != null) {
@@ -265,20 +374,137 @@ public class FontBrowser extends JFrame{
 		}
 	}
 
-	private void filterFonts() {
-		String query = searchField.getText().trim().toLowerCase();
-		java.util.List<String> filtered = new java.util.ArrayList<>();
-		for (String font : allFonts) {
-			if (query.isEmpty() || font.toLowerCase().contains(query)) {
-				filtered.add(font);
+	private void loadFontFromFile() {
+		JFileChooser chooser = new JFileChooser();
+		chooser.setDialogTitle("Select Font File");
+		chooser.setFileFilter(new javax.swing.filechooser.FileFilter() {
+			@Override
+			public boolean accept(java.io.File f) {
+				if (f.isDirectory()) {
+					return true;
+				}
+				String name = f.getName().toLowerCase();
+				return name.endsWith(".ttf") || name.endsWith(".otf");
+			}
+
+			@Override
+			public String getDescription() {
+				return "Font Files (*.ttf, *.otf)";
+			}
+		});
+
+		int result = chooser.showOpenDialog(this);
+		if (result == JFileChooser.APPROVE_OPTION) {
+			java.io.File file = chooser.getSelectedFile();
+			try {
+				Font loadedFont = Font.createFont(Font.TRUETYPE_FONT, file);
+				GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+				ge.registerFont(loadedFont);
+				String familyName = loadedFont.getFamily();
+				if (!loadedFonts.contains(familyName)) {
+					loadedFonts.add(familyName);
+				}
+				JOptionPane.showMessageDialog(this, "Loaded font: " + familyName, "Success", JOptionPane.INFORMATION_MESSAGE);
+				leftTabbedPane.setSelectedIndex(1);
+				filterFonts();
+				loadedList.setSelectedValue(familyName, true);
+			} catch (Exception ex) {
+				JOptionPane.showMessageDialog(this, "Error loading font: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
 			}
 		}
-		String selected = familyC.getSelectedValue();
-		familyC.setListData(filtered.toArray(new String[0]));
-		if (selected != null && filtered.contains(selected)) {
-			familyC.setSelectedValue(selected, true);
-		} else if (!filtered.isEmpty()) {
-			familyC.setSelectedIndex(0);
+	}
+
+	private void loadFontsFromDirectory() {
+		JFileChooser chooser = new JFileChooser();
+		chooser.setDialogTitle("Select Directory to Scan for Fonts");
+		chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+
+		int result = chooser.showOpenDialog(this);
+		if (result == JFileChooser.APPROVE_OPTION) {
+			java.io.File dir = chooser.getSelectedFile();
+			GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+			java.util.List<String> newlyLoaded = new java.util.ArrayList<>();
+			scanDirectoryForFonts(dir, ge, newlyLoaded);
+
+			if (newlyLoaded.isEmpty()) {
+				JOptionPane.showMessageDialog(this, "No new fonts loaded from " + dir.getName(), "Information", JOptionPane.INFORMATION_MESSAGE);
+			} else {
+				JOptionPane.showMessageDialog(this, "Successfully loaded " + newlyLoaded.size() + " fonts from " + dir.getName(), "Success", JOptionPane.INFORMATION_MESSAGE);
+				leftTabbedPane.setSelectedIndex(1);
+				filterFonts();
+				loadedList.setSelectedValue(newlyLoaded.get(0), true);
+			}
+		}
+	}
+
+	private void scanDirectoryForFonts(java.io.File dir, GraphicsEnvironment ge, java.util.List<String> newlyLoaded) {
+		java.io.File[] files = dir.listFiles();
+		if (files == null) {
+			return;
+		}
+		for (java.io.File f : files) {
+			if (f.isDirectory()) {
+				scanDirectoryForFonts(f, ge, newlyLoaded);
+			} else {
+				String name = f.getName().toLowerCase();
+				if (name.endsWith(".ttf") || name.endsWith(".otf")) {
+					try {
+						Font loadedFont = Font.createFont(Font.TRUETYPE_FONT, f);
+						ge.registerFont(loadedFont);
+						String familyName = loadedFont.getFamily();
+						if (!loadedFonts.contains(familyName)) {
+							loadedFonts.add(familyName);
+							newlyLoaded.add(familyName);
+						}
+					} catch (Exception ex) {
+						// Ignore invalid fonts in batch loading
+					}
+				}
+			}
+		}
+	}
+
+	private void filterFonts() {
+		String query = searchField.getText().trim().toLowerCase();
+
+		// 1. Filter system fonts
+		java.util.List<String> filteredSystem = new java.util.ArrayList<>();
+		for (String font : allFonts) {
+			if (query.isEmpty() || font.toLowerCase().contains(query)) {
+				filteredSystem.add(font);
+			}
+		}
+		String selectedSystem = systemList.getSelectedValue();
+		systemModel.clear();
+		for (String f : filteredSystem) {
+			systemModel.addElement(f);
+		}
+		if (selectedSystem != null && filteredSystem.contains(selectedSystem)) {
+			systemList.setSelectedValue(selectedSystem, true);
+		} else if (!filteredSystem.isEmpty()) {
+			systemList.setSelectedIndex(0);
+		} else {
+			systemList.clearSelection();
+		}
+
+		// 2. Filter loaded fonts
+		java.util.List<String> filteredLoaded = new java.util.ArrayList<>();
+		for (String font : loadedFonts) {
+			if (query.isEmpty() || font.toLowerCase().contains(query)) {
+				filteredLoaded.add(font);
+			}
+		}
+		String selectedLoaded = loadedList.getSelectedValue();
+		loadedModel.clear();
+		for (String f : filteredLoaded) {
+			loadedModel.addElement(f);
+		}
+		if (selectedLoaded != null && filteredLoaded.contains(selectedLoaded)) {
+			loadedList.setSelectedValue(selectedLoaded, true);
+		} else if (!filteredLoaded.isEmpty()) {
+			loadedList.setSelectedIndex(0);
+		} else {
+			loadedList.clearSelection();
 		}
 	}
 
@@ -502,7 +728,12 @@ public class FontBrowser extends JFrame{
 		fileMenu.add(newFile);
 
 		JMenuItem openFile = new JMenuItem("Open...");
-		openFile.addActionListener(menuListener);
+		openFile.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				loadFontFromFile();
+			}
+		});
 		fileMenu.add(openFile);
 
 		fileMenu.addSeparator();

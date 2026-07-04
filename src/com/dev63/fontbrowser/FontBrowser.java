@@ -135,6 +135,7 @@ public class FontBrowser extends JFrame{
 		center.addTab("Inputs", new JScrollPane(createInputsPanel()));
 		center.addTab("Selection", new JScrollPane(createSelectionPanel()));
 		center.addTab("Data Views", createDataViewsPanel());
+		center.addTab("Menus", createMenusPanel());
 		center.addTab("Feedback & Info", new JScrollPane(createFeedbackPanel()));
 		
 		
@@ -249,6 +250,12 @@ public class FontBrowser extends JFrame{
 			JComponent jc = (JComponent) comp;
 			if (jc.getBorder() instanceof javax.swing.border.TitledBorder) {
 				((javax.swing.border.TitledBorder) jc.getBorder()).setTitleFont(font);
+			}
+		}
+		if (comp instanceof JMenu) {
+			JMenu menu = (JMenu) comp;
+			for (Component child : menu.getMenuComponents()) {
+				updateComponentFonts(child, font);
 			}
 		}
 		if (comp instanceof Container) {
@@ -461,6 +468,130 @@ public class FontBrowser extends JFrame{
 		// Add empty filler to push elements up
 		gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2; gbc.weighty = 1.0;
 		panel.add(Box.createVerticalGlue(), gbc);
+
+		return panel;
+	}
+
+	private JPanel createMenusPanel() {
+		JPanel panel = new JPanel(new BorderLayout());
+		panel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+
+		JMenuBar menuBar = new JMenuBar();
+
+		// Center log area to show interaction
+		JTextArea menuLog = new JTextArea("Click menu items to see events here...\n");
+		menuLog.setEditable(false);
+		menuLog.setLineWrap(true);
+		menuLog.setWrapStyleWord(true);
+		JScrollPane scrollPane = new JScrollPane(menuLog);
+		scrollPane.setBorder(BorderFactory.createTitledBorder("Menu Event Log"));
+
+		// ActionListener for all menu items
+		ActionListener menuListener = new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				menuLog.append("Triggered Action: " + e.getActionCommand() + "\n");
+			}
+		};
+
+		// 1. File Menu
+		JMenu fileMenu = new JMenu("File");
+
+		JMenuItem newFile = new JMenuItem("New");
+		newFile.addActionListener(menuListener);
+		fileMenu.add(newFile);
+
+		JMenuItem openFile = new JMenuItem("Open...");
+		openFile.addActionListener(menuListener);
+		fileMenu.add(openFile);
+
+		fileMenu.addSeparator();
+
+		// Submenu inside File
+		JMenu exportSubMenu = new JMenu("Export As");
+
+		JMenuItem exportPdf = new JMenuItem("PDF Document");
+		exportPdf.addActionListener(menuListener);
+		exportSubMenu.add(exportPdf);
+
+		JMenuItem exportPng = new JMenuItem("PNG Image");
+		exportPng.addActionListener(menuListener);
+		exportSubMenu.add(exportPng);
+
+		fileMenu.add(exportSubMenu);
+
+		fileMenu.addSeparator();
+
+		JMenuItem exitItem = new JMenuItem("Exit");
+		exitItem.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.exit(0);
+			}
+		});
+		fileMenu.add(exitItem);
+
+		menuBar.add(fileMenu);
+
+		// 2. Edit Menu
+		JMenu editMenu = new JMenu("Edit");
+
+		JMenuItem cutItem = new JMenuItem("Cut");
+		cutItem.addActionListener(menuListener);
+		editMenu.add(cutItem);
+
+		JMenuItem copyItem = new JMenuItem("Copy");
+		copyItem.addActionListener(menuListener);
+		editMenu.add(copyItem);
+
+		JMenuItem pasteItem = new JMenuItem("Paste");
+		pasteItem.addActionListener(menuListener);
+		editMenu.add(pasteItem);
+
+		editMenu.addSeparator();
+
+		// Submenu inside Edit
+		JMenu formatSubMenu = new JMenu("Format Options");
+
+		JMenu caseSubMenu = new JMenu("Change Case");
+		JMenuItem upperItem = new JMenuItem("UPPERCASE");
+		upperItem.addActionListener(menuListener);
+		JMenuItem lowerItem = new JMenuItem("lowercase");
+		lowerItem.addActionListener(menuListener);
+		caseSubMenu.add(upperItem);
+		caseSubMenu.add(lowerItem);
+		formatSubMenu.add(caseSubMenu);
+
+		editMenu.add(formatSubMenu);
+
+		menuBar.add(editMenu);
+
+		// 3. View Menu
+		JMenu viewMenu = new JMenu("View");
+
+		JCheckBoxMenuItem showGrid = new JCheckBoxMenuItem("Show Gridlines");
+		showGrid.setSelected(true);
+		showGrid.addActionListener(menuListener);
+		viewMenu.add(showGrid);
+
+		JRadioButtonMenuItem lightMode = new JRadioButtonMenuItem("Light Theme");
+		JRadioButtonMenuItem darkMode = new JRadioButtonMenuItem("Dark Theme");
+		ButtonGroup themeGroup = new ButtonGroup();
+		themeGroup.add(lightMode);
+		themeGroup.add(darkMode);
+		lightMode.setSelected(true);
+		lightMode.addActionListener(menuListener);
+		darkMode.addActionListener(menuListener);
+		viewMenu.add(lightMode);
+		viewMenu.add(darkMode);
+
+		menuBar.add(viewMenu);
+
+		// Add JMenuBar to North of panel
+		panel.add(menuBar, BorderLayout.NORTH);
+
+		// Add Log to Center of panel
+		panel.add(scrollPane, BorderLayout.CENTER);
 
 		return panel;
 	}

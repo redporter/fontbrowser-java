@@ -6,9 +6,9 @@ A simple Java Swing desktop application designed for browsing, filtering, and pr
 
 ## 📸 Screenshots
 
-| Main Interface - Font Previews | Menus & Components Preview |
-|:---:|:---:|
-| ![Font Browser Main](doc/Screenshot-1.png) | ![Font Browser Components](doc/Screenshot-2.png) |
+![Font Browser Main](doc/Screenshot-1.png)
+
+![Font Browser Components](doc/Screenshot-2.png)
 
 ---
 

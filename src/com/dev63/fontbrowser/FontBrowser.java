@@ -1,7 +1,13 @@
 /*
- *  Dev63.com confidential. DO NOT DISTRIBUTE.
- *  Createad: 13 Apr 2025 14:25:06
- *  Author:  nemanja
+ *  FontBrowser - a Java Swing desktop application designed for browsing,
+ *  filtering, and previewing both system-installed fonts and dynamically 
+ *  loaded external font files (TTF/OTF).
+ * 
+ *  License:  MIT License
+ *  Copyright (c) 2026 Nemanja Simonovic
+ * 
+ * 
+ *  Author:  Nemanja Simonovic (dev63.com)
  */
 package com.dev63.fontbrowser;
 
